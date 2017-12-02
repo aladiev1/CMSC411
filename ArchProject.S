@@ -1,63 +1,30 @@
+
+	.arm
+	.align
+	.text
+	.global project
+
+project:
+
+	@r2 will be the offset
+	mov r2,#0
+
+	@address arctanTable
+	ldr r0, =arctanTable
+
+	loadAtanValue:
+		@loads first elemnent in array to r3
+		ldr r3,[r0, r2]
+
+		@get next index in array
+		add r2, r2, #4
+		cmp r2, #124
+		ble loadAtanValue
+
 .data
 
-.text
-start:
-		
-		mov		r0, #0
-		mov		r2, #2 ; number a
-		mov		r3, #4 ; number b
-		
-		;		a*b will be stored in R5
-		
-		;		call multiply
-		
-		cmp		r2, #0
-		cmpne	r3, #0
-		blne		Multiply
-		
-		mov		r10, r5 ; move multiply answer to r10
-		mov		r5, #0	; reset multiply reg
-		
-		;		c! will be stored in R8
-		
-		;call	factorial
-		
-		mov		r3, #5	;number to factorial
-		cmp		r3, #0
-		cmpne	r3, #1
-		moveq	r8, #1
-		blne		Factorial
-		mov		r3,r8
-		
-		
-end:
-		
-Pow:
-startExponent:
 
-	mov pc, lr
-		
-Multiply:
-loop:
-		add		r6, r6, #1
-		add		r5, r5, r3
-		cmp		r6, r2
-		bne		loop
-		blt		Multiply
-		mov		r6,#0 ; reset counter at end
-		mov		pc, lr
-		
-		
-		
-Factorial:
-		mov		r2,r3 ; decrement for factorial
-		
-loop2:
-		sub		r2,r2,#1
-		bl		Multiply
-		mov		r3,r5
-		mov		r5,#0
-		cmp		r2,#1
-		bne		loop2
-		blt		Factorial
-		bx		lr
+arctanTable: .word 0x3F490FDB, 0x3EED6338, 0x3E7ADBB0, 0x3DFEADD5, 0x3D7FAADE, 0x3CFFEAAE, 0x3C7FFAAB, 0x3BFFFEAB, 0x3B7FFFAB, 0x3AFFFFEB, 0x3A7FFFFB, 0x39FFFFFF, 0x39800000, 0x39000000, 0x38800000, 0x38000000, 0x37800000, 0x37000000, 0x36800000, 0x36000000, 0x35800000, 0x35000000, 0x34800000, 0x34000000, 0x33800000, 0x33000000, 0x32800000, 0x32000000, 0x31800000, 0x31000000, 0x30800000, 0x30000000
+
+
+.end
