@@ -49,13 +49,12 @@ Sin:
 	; Preserve registers and make sure LR doesn't get corrupted when we make our calls to _MUL and pow
 	STMDB SP!, { R4-R5,LR }
 
-	; r4 = Angle to compute
-	; Storing in r4 since pow and _MUL require r0 and r1 for the input parameters
-	MOV r4, r0
+	; r15 = Angle to compute
+	; Storing in r15 since pow and _MUL require r0 and r1 for the input parameters
+	MOV r15, r0
 
 	; r9 = current exponent/Index in factorial table
 	MOV r9, #0
-
 	; r10 = Current offset in factorial table. Could just multiply the current index by 4, but I don't feel like doing another multiply
 	; Easier to just add 4 every loop iteration
 	MOV r10, #4
@@ -67,24 +66,54 @@ Sin:
 	; r12 = pointer to factorial table
 	LDR r12, =recipFactorialTable
 
-	; r8 = Accumulator. Will keep a running sum of our approximation
-	MOV r8, #0
+	MOV r6, #0
+	; s2 = Accumulator. Will keep a running sum of our approximation
+	FMSR s2, r6
+
+	; r7 = flag to determine whether we add or subtract. 0 corresponds to add. 1 corresponds to subtract
+	MOV r7, #0
 
 SIN_APPROXIMATION_LOOP:
 
 	; r13 = Current recriprocal factorial value
 	ldr r13,[r12, r10]
 
+	; r0 = Current angle. r1 = current exponent
+	MOV r0, r15
+	MOV r1, r9
+	BL Pow
 
+	; Move the result of the pow function into r0 to prepare for _MUL
+	MOV r0, r2
+	MOV r1, r13
+	BL _MUL
 
+	CMP r7, #0
+	BNE SIN_SUB_TERM
+
+	; Set up floating point registers to add
+	FMSR s0, r2
+
+SIN_ADD_TERM:
+	FADDS s2, s2, s0
+	B SIN_PREPARE_NEXT_TERM
+
+SIN_SUB_TERM:
+	FSUBS s2, s2, s0
+
+SIN_PREPARE_NEXT_TERM:
+	; Flip the flag so we perform the opposite arithmetic operation in the next iteration
+	MOV r3, #1
+	EOR r7, r7, #1
 	; Skip an index in the table every iteration, so increment by 8 instead of 4
-	add r9, r9, #2
-	add r12, r12, #8
-	cmp r9, r11
+	ADD r9, r9, #2
+	ADD r10, r10, #8
+	CMP r9, r11
 	BLT SIN_APPROXIMATION_LOOP
 
 FINISHED_SIN_APPROXIMATION:
 
+	FMRS r2, s2
 	LDMIA SP!, { R4-R5,PC } ; loading into PC returns out of subroutine
 	MOV PC, lr    			;return
 
