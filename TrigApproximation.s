@@ -11,8 +11,8 @@
 	ANGLE: .word 0x40490fdb
 	
 	;results will be stored in memory, pointed to by these labels
-	INPUT1_FLOAT: .word 0x46ffffff   ;result of conversion to float for input 1
-	INPUT2_FLOAT: .word 0x467fffff   ;result of conversion to float for input 2
+	INPUT1_FLOAT: .word 0x3F800000   ;result of conversion to float for input 1
+	INPUT2_FLOAT: .word 0x3F800000   ;result of conversion to float for input 2
 	MUL_RESULT:  .word 0    ;result from multiplication algorithm
 
 
@@ -23,14 +23,15 @@
 _main:
 	LDR r0, =ANGLE
 	
-	;LDR	r0,=INPUT1_FLOAT
+	;LDR	r0, =INPUT1_FLOAT
 	;LDR r0, [r0]
 	;LDR	r1, =INPUT2_FLOAT
 	;LDR r1, [r1]
     ;BL _MUL					;multiplication, store in MUL_RESULT
-    MOV r0, #0x46ffffff
-    MOV r1, #0x40000000
-    BL _MUL
+    ;MOV r0, #0x46ffffff
+    MOV r0, #0x3F800000
+    MOV r1, #1
+    BL Pow
     ;BL Pow
     ;BL _CHECK_ANS			;move all results from memory to registers to easily check them
     B _exit					;exit
@@ -45,40 +46,47 @@ Cos:
 ; r0 = base
 ; r1 = exponent
 ; r2 = output
-;Currently only handles non-negative exponents since this is all we need.
-; Negative exponents will be treated as if there were 0
+; Currently only handles non-negative exponents since this is all we need.
+; Negative exponents will be treated as if there were 0. Fractional exponents are also not handled
 Pow:
-	MOV r4, #0x0
-	CMP r1, r4
+	CMP r1, #0x0
 	; Treat negative exponents as if they were 0
-	BLEQ ZERO_EXPONENT
+	BLE ZERO_EXPONENT
+
+	str r0, [sp, #-4]!
 
 	MOV r2, r0
 
 POW_LOOP:
+
+	; Save our current exponent onto the stack
+	;str r1, [sp, #-8]!
+
 	; Multiply r2 by itself as long as we have a postive exponent
 	; _MUL takes its input values in r0 and r1
+	; r2 is our running product. r1 will load the original base from the stack
 	MOV r0, r2
+	LDR r1, [sp], #4
 
-	; Push r1 onto the stack to save our exponent
-	; Push does not seem to work, so I'll just use a temp register
-	MOV r6, r1
-	MOV r1, r2
-	BL _MUL					;multiplication, store in MUL_RESULT
-
-	; Output of _MUL will be in r3, but we want our output to be in r2
-	MOV r2, r3
-
+	;LDR r1, [r1]
+	; The link register is corrupted for some reason after calling _MUL. Probably gets overwritten by the call to _MUL and we need to preserve the lr from the call to pow
+	; Store in r13 for now even though this is probably horrible practice
+	mov r13, lr
+	BL _MUL
+	mov lr, r13
+MOV PC, lr
 	; Restore our exponent
-	MOV r1, r6
-	; Keep multiplying until the exponent is 0
+	LDR r1, [sp], #8
+MOV PC, lr
+	; Keep multiplying as long as exponent is greater than 0
 	SUB r1, r1, #1
-	CMP r1, r4
-	BNE POW_LOOP
+	CMP r1, #1
+	BGE POW_LOOP
 	B FINISHED_POW
 
 ZERO_EXPONENT:
-	MOV r2, #1
+	; Exponent of 0 gives a result of 1
+	MOV r2, #0x3F800000
 	
 FINISHED_POW:
 
