@@ -39,11 +39,11 @@ _main:
 
 	LDR r0, =ANGLE
 	LDR r0, [r0]
-	MOV r0, #0x3F000000
-	MOV r1, #2
-    BL Pow
+	;MOV r0, #0x3F000000
+	;MOV r1, #1
+    BL Sin
+    ; BL Pow
 	
-    ;BL Sin
     ;BL _CHECK_ANS			;move all results from memory to registers to easily check them
     B _exit					;exit
 
@@ -62,7 +62,7 @@ Sin:
 	MOV r3, r0
 
 	; r4 = current exponent/Index in factorial table
-	MOV r4, #0
+	MOV r4, #1
 	; r5 = Current offset in factorial table. Could just multiply the current index by 4, but I don't feel like doing another multiply
 	; Easier to just add 4 every loop iteration
 	MOV r5, #4
@@ -90,18 +90,18 @@ SIN_APPROXIMATION_LOOP:
 
 	BL Pow
 
-	mov pc, lr
+	;mov pc, lr
 
 	; Move the result of the pow function into r0 to prepare for _MUL
 	MOV r0, r2
 	MOV r1, r9
 	BL _MUL
 
-	CMP r7, #0
-	BNE SIN_SUB_TERM
-
 	; Set up floating point registers to add
 	FMSR s0, r2
+
+	CMP r7, #0
+	BNE SIN_SUB_TERM
 
 SIN_ADD_TERM:
 	FADDS s2, s2, s0
@@ -112,7 +112,6 @@ SIN_SUB_TERM:
 
 SIN_PREPARE_NEXT_TERM:
 	; Flip the flag so we perform the opposite arithmetic operation in the next iteration
-	MOV r3, #1
 	EOR r7, r7, #1
 	; Skip an index in the table every iteration, so increment by 8 instead of 4
 	ADD r4, r4, #2
@@ -149,7 +148,6 @@ Pow:
 	BLE ZERO_EXPONENT
 
 	MOV r3, r0
-	MOV r4, r1
 	MOV r2, r0
 
 	; If exponent is 1 then do not do any multiplies
@@ -160,6 +158,7 @@ Pow:
 	;STMDB SP!, {r0}
 POW_LOOP:
 
+	MOV r4, r1
 	; Multiply r2 by itself as long as we have a postive exponent
 	; _MUL takes its input values in r0 and r1
 	; r2 is our running product. r1 will load the original base from the stack
