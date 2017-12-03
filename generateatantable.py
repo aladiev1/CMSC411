@@ -2,6 +2,12 @@ import math
 import struct
 bin(struct.unpack('!i',struct.pack('!f',1.0))[0])
 
+def genRecriprocalFactorialTable():
+	print("RecriprocalFactorial Table-------------")
+	for i in range(0, 32):
+		print(hex(int(bin(struct.unpack('!i',struct.pack('!f',1 / math.factorial(i)))[0]), 2)))
+	print("---------------------------------------")
+
 def genATanTable():
 	print("Atan Table-----------------------------")
 	for i in range(0, 32):
@@ -18,3 +24,4 @@ def genATanhTable():
 if __name__ == "__main__":
 	genATanTable()
 	genATanhTable()
+	genRecriprocalFactorialTable()
