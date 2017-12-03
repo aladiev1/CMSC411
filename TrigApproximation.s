@@ -25,7 +25,6 @@
 .global _main
 
 _main:
-	LDR r0, =ANGLE
 	
 	;LDR	r0, =INPUT1_FLOAT
 	;LDR r0, [r0]
@@ -36,10 +35,15 @@ _main:
     ;MOV r0, #0x3F000000
     ;MOV r1, #2
     ;BL Pow
-    MOV r0, #0
+    ;MOV r0, #0x3f490fdb
 
-    BL Sin
-    ;BL Pow
+	LDR r0, =ANGLE
+	LDR r0, [r0]
+	MOV r0, #0x3F000000
+	MOV r1, #2
+    BL Pow
+	
+    ;BL Sin
     ;BL _CHECK_ANS			;move all results from memory to registers to easily check them
     B _exit					;exit
 
@@ -49,9 +53,10 @@ _main:
 ; Output: r1
 
 Sin:
+	STMDB SP!, { R3-R8, LR }
 	; Preserve registers and make sure LR doesn't get corrupted when we make our calls to _MUL and pow
-	STMDB SP!, { R3-R8,LR }
-	mov r14, lr
+	;STMDB SP!, { R3-R8,LR }
+	;mov r14, lr
 	; r3 = Angle to compute
 	; Storing in r3 since pow and _MUL require r0 and r1 for the input parameters
 	MOV r3, r0
@@ -69,26 +74,27 @@ Sin:
 	; r8 = pointer to factorial table
 	LDR r8, =recipFactorialTable
 
-	MOV r7, #0
-	; s2 = Accumulator. Will keep a running sum of our approximation
-	FMSR s2, r6
-	mov pc, r14
-
 	; r7 = flag to determine whether we add or subtract. 0 corresponds to add. 1 corresponds to subtract
 	MOV r7, #0
+	; s2 = Accumulator. Will keep a running sum of our approximation. Set it to r7 since it's 0 anyway and we want to add first
+	FMSR s2, r7
+
 SIN_APPROXIMATION_LOOP:
 
-	; r4 = Current recriprocal factorial value
-	ldr r4,[r8, r5]
+	; r9 = Current recriprocal factorial value
+	ldr r9,[r8, r5]
 
 	; r0 = Current angle. r1 = current exponent
 	MOV r0, r3
 	MOV r1, r4
+
 	BL Pow
+
+	mov pc, lr
 
 	; Move the result of the pow function into r0 to prepare for _MUL
 	MOV r0, r2
-	MOV r1, r4
+	MOV r1, r9
 	BL _MUL
 
 	CMP r7, #0
@@ -117,16 +123,17 @@ SIN_PREPARE_NEXT_TERM:
 FINISHED_SIN_APPROXIMATION:
 
 	FMRS r1, s2
-	LDMIA SP!, { R3-R8,PC } ; loading into PC returns out of subroutine
+	;LDMIA SP!, { R3-R8,PC } ; loading into PC returns out of subroutine
 	;MOV lr, r14
+	LDMIA SP!, { R3-R8, PC }
 	;MOV PC, lr    			;return
 
 ; Input: r0 = angle in IEEE 754 format
 ; Output: r1
 Cos:
-	STMDB SP!, { R4-R5,LR }
+	STMDB SP!, { R3-R8,LR }
 
-	LDMIA SP!, { R4-R5,PC } ; loading into PC returns out of subroutine
+	LDMIA SP!, { R3-R8,PC } ; loading into PC returns out of subroutine
 
 	;MOV PC, lr    			;return
 	
@@ -136,16 +143,18 @@ Cos:
 ; Currently only handles non-negative exponents since this is all we need.
 ; Negative exponents will be treated as if there were 0. Fractional exponents are also not handled
 Pow:
-	STMDB SP!, { R3-R8, r13, LR }
+	STMDB SP!, { R3-R8, LR }
 	CMP r1, #0x0
 	; Treat negative exponents as if they were 0
 	BLE ZERO_EXPONENT
 
-	;str r0, [sp, #-4]!
-
-	MOV r11, r0
-	MOV r12, r1
+	MOV r3, r0
+	MOV r4, r1
 	MOV r2, r0
+
+	; If exponent is 1 then do not do any multiplies
+	CMP r1, #1
+	BEQ FINISHED_POW
 
 	; Stack is giving me issues, so just going to use temp registers
 	;STMDB SP!, {r0}
@@ -155,15 +164,13 @@ POW_LOOP:
 	; _MUL takes its input values in r0 and r1
 	; r2 is our running product. r1 will load the original base from the stack
 	MOV r0, r2
-	MOV r1, r11
+	MOV r1, r3
 	
-	; The link register is corrupted for some reason after calling _MUL. Probably gets overwritten by the call to _MUL and we need to preserve the lr from the call to pow
-	; Store in r13 for now even though this is probably horrible practice
-	MOV r13, lr
+	;MOV r9, lr
 	BL _MUL
-	MOV lr, r13
+	;MOV lr, r9
 
-	MOV r1, r12
+	MOV r1, r4
 	; Keep multiplying as long as exponent is greater than 0
 	SUB r1, r1, #1
 	CMP r1, #1
@@ -175,7 +182,7 @@ ZERO_EXPONENT:
 	MOV r2, #0x3F800000
 	
 FINISHED_POW:
-	LDMIA SP!, { R3-R8, r13, PC } ; loading into PC returns out of subroutine
+	LDMIA SP!, { R3-R8, PC } ; loading into PC returns out of subroutine
 	;MOV PC, lr    			;return
 	
 ;Multiplication subroutine
@@ -183,7 +190,7 @@ FINISHED_POW:
 ;input: r0 = input 1, r1 = input 2
 ;output: r2
 _MUL:
-	STMDB SP!, { R3-R8,LR }
+	STMDB SP!, { R3-R8, LR }
 
 	;first get two inputs     
 	
@@ -300,7 +307,9 @@ MULT_DONE:
 	LDR r4, =MUL_RESULT		
 	STR	r3, [r4]			;put answer into memory 
     MOV r2, r3
-    MOV PC, lr    			;return
+
+    LDMIA SP!, { R3-R8, PC } ; loading into PC returns out of subroutine
+    ;MOV PC, lr    			;return
 
 ;;move results to registers to check them
 _CHECK_ANS:
@@ -311,8 +320,8 @@ _CHECK_ANS:
 	LDR r3, [r3]
 	LDR r8, =MUL_RESULT 	;result of our mul
 	LDR r8, [r8]
-
-	LDMIA SP!, { R3-R8,PC } ; loading into PC returns out of subroutine
+MOV PC, lr
+	LDMIA SP!, { R3-R8, PC } ; loading into PC returns out of subroutine
 	;MOV pc, lr 				;return
 
 ;;exit program 
