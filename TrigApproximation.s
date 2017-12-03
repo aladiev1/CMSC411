@@ -9,10 +9,10 @@
 	;	0	   = 0x0
 
 	; Table of reciprocals of factorial values. Precomputed to avoid the need for division and for performance considerations
-	recipFactorialTable: .word  0x3f800000, 0x3f800000, 0x3f000000, 0x3e2aaaab, 0x3d2aaaab, 0x3c088889, 0x3ab60b61, 0x39500d01, 0x37d00d01, 0x3638ef1d, 0x3493f27e, 0x32d7322b, 0x310f76c7, 0x2f309231, 0x2d49cba5, 0x2b573f9f, 0x29573f9f, 0x274a963c, 0x253413c3, 0x2317a4da, 0x20f2a15d, 0x1eb8dc78, 0x1c8671cb, 0x1a3b0da1, 0x17f96781, 0x159f9e67, 0x13447430, 0x10e8d58e, 0x0e850c51, 0x0c12cfcc, 0x099c9963, 0x0721a697
+	recipFactorialTable: .word  0x3f800000, 0x3f800000, 0x3f000000, 0x3e2aaaab, 0x3d2aaaab, 0x3c088889, 0x3ab60b61, 0x39500d01, 0x37d00d01, 0x3638ef1d, 0x3493f27e, 0x32d7322b, 0x310f76c7, 0x2f309231, 0x2d49cba5, 0x2b573f9f, 0x29573f9f, 0x274a963c, 0x253413c3, 0x2317a4da, 0x20f2a15d, 0x1eb8dc78, 0x1c8671cb, 0x1a3b0da1, 0x17f96781, 0x159f9e67, 0x13447430, 0x10e8d58e, 0xe850c51, 0xc12cfcc, 0x99c9963, 0x721a697, 0x4a1a697, 0x21cc093, 0x24e204, 0x10dc6, 0x77e, 0x34, 0x1, 0x0
 	
-	NUM_TERMS_IN_FACTORIAL_TABLE: .word 0x20
-	ANGLE: .word 0x40490fdb
+	NUM_TERMS_IN_FACTORIAL_TABLE: .word 0x28
+	ANGLE: .word 0x3fc90fdb
 	
 	;results will be stored in memory, pointed to by these labels
 	INPUT1_FLOAT: .word 0x3F800000   ;result of conversion to float for input 1
@@ -53,10 +53,9 @@ _main:
 ; Output: r1
 
 Sin:
-	STMDB SP!, { R3-R8, LR }
 	; Preserve registers and make sure LR doesn't get corrupted when we make our calls to _MUL and pow
-	;STMDB SP!, { R3-R8,LR }
-	;mov r14, lr
+	STMDB SP!, { R3-R8, LR }
+
 	; r3 = Angle to compute
 	; Storing in r3 since pow and _MUL require r0 and r1 for the input parameters
 	MOV r3, r0
@@ -87,10 +86,7 @@ SIN_APPROXIMATION_LOOP:
 	; r0 = Current angle. r1 = current exponent
 	MOV r0, r3
 	MOV r1, r4
-
 	BL Pow
-
-	;mov pc, lr
 
 	; Move the result of the pow function into r0 to prepare for _MUL
 	MOV r0, r2

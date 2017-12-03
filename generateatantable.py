@@ -4,7 +4,7 @@ bin(struct.unpack('!i',struct.pack('!f',1.0))[0])
 
 def genRecriprocalFactorialTable():
 	print("RecriprocalFactorial Table-------------")
-	for i in range(0, 32):
+	for i in range(0, 64):
 		print(hex(int(bin(struct.unpack('!i',struct.pack('!f',1 / math.factorial(i)))[0]), 2)))
 	print("---------------------------------------")
 
