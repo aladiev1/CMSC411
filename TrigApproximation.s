@@ -33,9 +33,12 @@ _main:
 	;LDR r1, [r1]
     ;BL _MUL					;multiplication, store in MUL_RESULT
     ;MOV r0, #0x46ffffff
-    MOV r0, #0x3F000000
-    MOV r1, #2
-    BL Pow
+    ;MOV r0, #0x3F000000
+    ;MOV r1, #2
+    ;BL Pow
+    MOV r0, #0
+
+    BL Sin
     ;BL Pow
     ;BL _CHECK_ANS			;move all results from memory to registers to easily check them
     B _exit					;exit
@@ -47,45 +50,45 @@ _main:
 
 Sin:
 	; Preserve registers and make sure LR doesn't get corrupted when we make our calls to _MUL and pow
-	STMDB SP!, { R4-R5,LR }
+	STMDB SP!, { R3-R8,LR }
+	mov r14, lr
+	; r3 = Angle to compute
+	; Storing in r3 since pow and _MUL require r0 and r1 for the input parameters
+	MOV r3, r0
 
-	; r15 = Angle to compute
-	; Storing in r15 since pow and _MUL require r0 and r1 for the input parameters
-	MOV r15, r0
-
-	; r9 = current exponent/Index in factorial table
-	MOV r9, #0
-	; r10 = Current offset in factorial table. Could just multiply the current index by 4, but I don't feel like doing another multiply
+	; r4 = current exponent/Index in factorial table
+	MOV r4, #0
+	; r5 = Current offset in factorial table. Could just multiply the current index by 4, but I don't feel like doing another multiply
 	; Easier to just add 4 every loop iteration
-	MOV r10, #4
+	MOV r5, #4
 
-	; r11 = Number of terms in factorial table. This will be our loop controller. Iterate as long as r9 is < r11
-	LDR r11, =NUM_TERMS_IN_FACTORIAL_TABLE
-	LDR r11, [r11]
+	; r6 = Number of terms in factorial table. This will be our loop controller. Iterate as long as r4 is < r6
+	LDR r6, =NUM_TERMS_IN_FACTORIAL_TABLE
+	LDR r6, [r6]
 
-	; r12 = pointer to factorial table
-	LDR r12, =recipFactorialTable
+	; r8 = pointer to factorial table
+	LDR r8, =recipFactorialTable
 
-	MOV r6, #0
+	MOV r7, #0
 	; s2 = Accumulator. Will keep a running sum of our approximation
 	FMSR s2, r6
+	mov pc, r14
 
 	; r7 = flag to determine whether we add or subtract. 0 corresponds to add. 1 corresponds to subtract
 	MOV r7, #0
-
 SIN_APPROXIMATION_LOOP:
 
-	; r13 = Current recriprocal factorial value
-	ldr r13,[r12, r10]
+	; r4 = Current recriprocal factorial value
+	ldr r4,[r8, r5]
 
 	; r0 = Current angle. r1 = current exponent
-	MOV r0, r15
-	MOV r1, r9
+	MOV r0, r3
+	MOV r1, r4
 	BL Pow
 
 	; Move the result of the pow function into r0 to prepare for _MUL
 	MOV r0, r2
-	MOV r1, r13
+	MOV r1, r4
 	BL _MUL
 
 	CMP r7, #0
@@ -106,16 +109,17 @@ SIN_PREPARE_NEXT_TERM:
 	MOV r3, #1
 	EOR r7, r7, #1
 	; Skip an index in the table every iteration, so increment by 8 instead of 4
-	ADD r9, r9, #2
-	ADD r10, r10, #8
-	CMP r9, r11
+	ADD r4, r4, #2
+	ADD r5, r5, #8
+	CMP r4, r6
 	BLT SIN_APPROXIMATION_LOOP
 
 FINISHED_SIN_APPROXIMATION:
 
-	FMRS r2, s2
-	LDMIA SP!, { R4-R5,PC } ; loading into PC returns out of subroutine
-	MOV PC, lr    			;return
+	FMRS r1, s2
+	LDMIA SP!, { R3-R8,PC } ; loading into PC returns out of subroutine
+	;MOV lr, r14
+	;MOV PC, lr    			;return
 
 ; Input: r0 = angle in IEEE 754 format
 ; Output: r1
@@ -124,7 +128,7 @@ Cos:
 
 	LDMIA SP!, { R4-R5,PC } ; loading into PC returns out of subroutine
 
-	MOV PC, lr    			;return
+	;MOV PC, lr    			;return
 	
 ; r0 = base
 ; r1 = exponent
@@ -132,6 +136,7 @@ Cos:
 ; Currently only handles non-negative exponents since this is all we need.
 ; Negative exponents will be treated as if there were 0. Fractional exponents are also not handled
 Pow:
+	STMDB SP!, { R3-R8, r13, LR }
 	CMP r1, #0x0
 	; Treat negative exponents as if they were 0
 	BLE ZERO_EXPONENT
@@ -170,14 +175,16 @@ ZERO_EXPONENT:
 	MOV r2, #0x3F800000
 	
 FINISHED_POW:
-
-	MOV PC, lr    			;return
+	LDMIA SP!, { R3-R8, r13, PC } ; loading into PC returns out of subroutine
+	;MOV PC, lr    			;return
 	
 ;Multiplication subroutine
 ;Modified this a bit to take inputs in r0 and r1 instead of hardcoding to INPUT_FLOAT1 and INPUT_FLOAT2
 ;input: r0 = input 1, r1 = input 2
 ;output: r2
 _MUL:
+	STMDB SP!, { R3-R8,LR }
+
 	;first get two inputs     
 	
 	;LDR r0,[r0]
@@ -305,7 +312,8 @@ _CHECK_ANS:
 	LDR r8, =MUL_RESULT 	;result of our mul
 	LDR r8, [r8]
 
-	MOV pc, lr 				;return
+	LDMIA SP!, { R3-R8,PC } ; loading into PC returns out of subroutine
+	;MOV pc, lr 				;return
 
 ;;exit program 
 _exit:
