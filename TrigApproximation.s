@@ -12,7 +12,7 @@
 	recipFactorialTable: .word  0x3f800000, 0x3f800000, 0x3f000000, 0x3e2aaaab, 0x3d2aaaab, 0x3c088889, 0x3ab60b61, 0x39500d01, 0x37d00d01, 0x3638ef1d, 0x3493f27e, 0x32d7322b, 0x310f76c7, 0x2f309231, 0x2d49cba5, 0x2b573f9f, 0x29573f9f, 0x274a963c, 0x253413c3, 0x2317a4da, 0x20f2a15d, 0x1eb8dc78, 0x1c8671cb, 0x1a3b0da1, 0x17f96781, 0x159f9e67, 0x13447430, 0x10e8d58e, 0xe850c51, 0xc12cfcc, 0x99c9963, 0x721a697, 0x4a1a697, 0x21cc093, 0x24e204, 0x10dc6, 0x77e, 0x34, 0x1, 0x0
 	
 	NUM_TERMS_IN_FACTORIAL_TABLE: .word 0x28
-	ANGLE: .word 0x3fc90fdb
+	ANGLE: .word 0x3f860a92
 	
 	;results will be stored in memory, pointed to by these labels
 	INPUT1_FLOAT: .word 0x3F800000   ;result of conversion to float for input 1
@@ -26,25 +26,22 @@
 
 _main:
 	
-	;LDR	r0, =INPUT1_FLOAT
-	;LDR r0, [r0]
-	;LDR	r1, =INPUT2_FLOAT
-	;LDR r1, [r1]
-    ;BL _MUL					;multiplication, store in MUL_RESULT
-    ;MOV r0, #0x46ffffff
-    ;MOV r0, #0x3F000000
-    ;MOV r1, #2
-    ;BL Pow
-    ;MOV r0, #0x3f490fdb
+	LDR r0, =ANGLE
+	LDR r0, [r0]
+    BL Sin
+
+    ; Store result of sin in r8 and s8
+    MOV r8, r1
+    FMSR s8, r8
 
 	LDR r0, =ANGLE
 	LDR r0, [r0]
-	;MOV r0, #0x3F000000
-	;MOV r1, #1
-    BL Sin
-    ; BL Pow
+    BL Cos
+
+    ; Store result of sin in r8 and s8
+    MOV r9, r1
+    FMSR s9, r9
 	
-    ;BL _CHECK_ANS			;move all results from memory to registers to easily check them
     B _exit					;exit
 
 
@@ -123,9 +120,72 @@ FINISHED_SIN_APPROXIMATION:
 ; Input: r0 = angle in IEEE 754 format
 ; Output: r1
 Cos:
-	STMDB SP!, { R3-R9,LR }
+; Preserve registers and make sure LR doesn't get corrupted when we make our calls to _MUL and pow
+	STMDB SP!, { R3-R9, LR }
 
-	LDMIA SP!, { R3-R9,PC } ; loading into PC returns out of subroutine
+	; r3 = Angle to compute
+	; Storing in r3 since pow and _MUL require r0 and r1 for the input parameters
+	MOV r3, r0
+
+	; r4 = current exponent/Index in factorial table
+	MOV r4, #0
+	; r5 = Current offset in factorial table. Could just multiply the current index by 4, but I don't feel like doing another multiply
+	; Easier to just add 4 every loop iteration
+	MOV r5, #0
+
+	; r6 = Number of terms in factorial table. This will be our loop controller. Iterate as long as r4 is < r6
+	LDR r6, =NUM_TERMS_IN_FACTORIAL_TABLE
+	LDR r6, [r6]
+
+	; r8 = pointer to factorial table
+	LDR r8, =recipFactorialTable
+
+	; r7 = flag to determine whether we add or subtract. 0 corresponds to add. 1 corresponds to subtract
+	MOV r7, #0
+	; s2 = Accumulator. Will keep a running sum of our approximation. Set it to r7 since it's 0 anyway and we want to add first
+	FMSR s2, r7
+
+COS_APPROXIMATION_LOOP:
+
+	; r9 = Current recriprocal factorial value
+	ldr r9,[r8, r5]
+
+	; r0 = Current angle. r1 = current exponent
+	MOV r0, r3
+	MOV r1, r4
+	BL Pow
+
+	; Move the result of the pow function into r0 to prepare for _MUL
+	MOV r0, r2
+	MOV r1, r9
+	BL _MUL
+
+	; Set up floating point registers to add
+	FMSR s0, r2
+
+	CMP r7, #0
+	BNE COS_SUB_TERM
+
+COS_ADD_TERM:
+	FADDS s2, s2, s0
+	B COS_PREPARE_NEXT_TERM
+
+COS_SUB_TERM:
+	FSUBS s2, s2, s0
+
+COS_PREPARE_NEXT_TERM:
+	; Flip the flag so we perform the opposite arithmetic operation in the next iteration
+	EOR r7, r7, #1
+	; Skip an index in the table every iteration, so increment by 8 instead of 4
+	ADD r4, r4, #2
+	ADD r5, r5, #8
+	CMP r4, r6
+	BLT COS_APPROXIMATION_LOOP
+
+FINISHED_COS_APPROXIMATION:
+
+	FMRS r1, s2
+	LDMIA SP!, { R3-R9, PC }
 
 	;MOV PC, lr    			;return
 	
