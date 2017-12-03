@@ -7,7 +7,11 @@
 	;	PI / 3 = 0x3f860a92
 	;	PI / 4 = 0x3f490fdb
 	;	0	   = 0x0
+
+	; Table of reciprocals of factorial values. Precomputed to avoid the need for division and for performance considerations
+	recipFactorialTable: .word  0x3f800000, 0x3f800000, 0x3f000000, 0x3e2aaaab, 0x3d2aaaab, 0x3c088889, 0x3ab60b61, 0x39500d01, 0x37d00d01, 0x3638ef1d, 0x3493f27e, 0x32d7322b, 0x310f76c7, 0x2f309231, 0x2d49cba5, 0x2b573f9f, 0x29573f9f, 0x274a963c, 0x253413c3, 0x2317a4da, 0x20f2a15d, 0x1eb8dc78, 0x1c8671cb, 0x1a3b0da1, 0x17f96781, 0x159f9e67, 0x13447430, 0x10e8d58e, 0x0e850c51, 0x0c12cfcc, 0x099c9963, 0x0721a697
 	
+	NUM_TERMS_IN_FACTORIAL_TABLE: .word 0x20
 	ANGLE: .word 0x40490fdb
 	
 	;results will be stored in memory, pointed to by these labels
@@ -37,10 +41,60 @@ _main:
     B _exit					;exit
 
 
+; Sin function approximation using taylor series
+; Input: r0 = angle in IEEE 754 format
+; Output: r1
+
 Sin:
+	; Preserve registers and make sure LR doesn't get corrupted when we make our calls to _MUL and pow
+	STMDB SP!, { R4-R5,LR }
+
+	; r4 = Angle to compute
+	; Storing in r4 since pow and _MUL require r0 and r1 for the input parameters
+	MOV r4, r0
+
+	; r9 = current exponent/Index in factorial table
+	MOV r9, #0
+
+	; r10 = Current offset in factorial table. Could just multiply the current index by 4, but I don't feel like doing another multiply
+	; Easier to just add 4 every loop iteration
+	MOV r10, #4
+
+	; r11 = Number of terms in factorial table. This will be our loop controller. Iterate as long as r9 is < r11
+	LDR r11, =NUM_TERMS_IN_FACTORIAL_TABLE
+	LDR r11, [r11]
+
+	; r12 = pointer to factorial table
+	LDR r12, =recipFactorialTable
+
+	; r8 = Accumulator. Will keep a running sum of our approximation
+	MOV r8, #0
+
+SIN_APPROXIMATION_LOOP:
+
+	; r13 = Current recriprocal factorial value
+	ldr r13,[r12, r10]
+
+
+
+	; Skip an index in the table every iteration, so increment by 8 instead of 4
+	add r9, r9, #2
+	add r12, r12, #8
+	cmp r9, r11
+	BLT SIN_APPROXIMATION_LOOP
+
+FINISHED_SIN_APPROXIMATION:
+
+	LDMIA SP!, { R4-R5,PC } ; loading into PC returns out of subroutine
 	MOV PC, lr    			;return
-	
+
+; Input: r0 = angle in IEEE 754 format
+; Output: r1
 Cos:
+	STMDB SP!, { R4-R5,LR }
+
+	LDMIA SP!, { R4-R5,PC } ; loading into PC returns out of subroutine
+
 	MOV PC, lr    			;return
 	
 ; r0 = base
