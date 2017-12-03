@@ -29,8 +29,8 @@ _main:
 	;LDR r1, [r1]
     ;BL _MUL					;multiplication, store in MUL_RESULT
     ;MOV r0, #0x46ffffff
-    MOV r0, #0x3F800000
-    MOV r1, #1
+    MOV r0, #0x3F000000
+    MOV r1, #2
     BL Pow
     ;BL Pow
     ;BL _CHECK_ANS			;move all results from memory to registers to easily check them
@@ -53,35 +53,33 @@ Pow:
 	; Treat negative exponents as if they were 0
 	BLE ZERO_EXPONENT
 
-	str r0, [sp, #-4]!
+	;str r0, [sp, #-4]!
 
+	MOV r11, r0
+	MOV r12, r1
 	MOV r2, r0
 
+	; Stack is giving me issues, so just going to use temp registers
+	;STMDB SP!, {r0}
 POW_LOOP:
-
-	; Save our current exponent onto the stack
-	;str r1, [sp, #-8]!
 
 	; Multiply r2 by itself as long as we have a postive exponent
 	; _MUL takes its input values in r0 and r1
 	; r2 is our running product. r1 will load the original base from the stack
 	MOV r0, r2
-	LDR r1, [sp], #4
-
-	;LDR r1, [r1]
+	MOV r1, r11
+	
 	; The link register is corrupted for some reason after calling _MUL. Probably gets overwritten by the call to _MUL and we need to preserve the lr from the call to pow
 	; Store in r13 for now even though this is probably horrible practice
-	mov r13, lr
+	MOV r13, lr
 	BL _MUL
-	mov lr, r13
-MOV PC, lr
-	; Restore our exponent
-	LDR r1, [sp], #8
-MOV PC, lr
+	MOV lr, r13
+
+	MOV r1, r12
 	; Keep multiplying as long as exponent is greater than 0
 	SUB r1, r1, #1
 	CMP r1, #1
-	BGE POW_LOOP
+	BGT POW_LOOP
 	B FINISHED_POW
 
 ZERO_EXPONENT:
