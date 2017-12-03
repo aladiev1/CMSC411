@@ -13,14 +13,7 @@
 	
 	NUM_TERMS_IN_FACTORIAL_TABLE: .word 0x28
 	ANGLE: .word 0x3f860a92
-	
-	;results will be stored in memory, pointed to by these labels
-	INPUT1_FLOAT: .word 0x3F800000   ;result of conversion to float for input 1
-	INPUT2_FLOAT: .word 0x3F800000   ;result of conversion to float for input 2
-	MUL_RESULT:  .word 0    ;result from multiplication algorithm
 
-
-;;ARM instructions
 .text
 .global _main
 
@@ -354,25 +347,10 @@ MULT_ZERO:
 	MOV r3, #0 				;answer is zero, special case
 
 MULT_DONE:
-	LDR r4, =MUL_RESULT		
-	STR	r3, [r4]			;put answer into memory 
     MOV r2, r3
 
     LDMIA SP!, { R3-R9, PC } ; loading into PC returns out of subroutine
     ;MOV PC, lr    			;return
-
-;;move results to registers to check them
-_CHECK_ANS:
-
-	LDR r2, =INPUT1_FLOAT 	;converted input 1
-	LDR r2, [r2]
-	LDR r3, =INPUT2_FLOAT 	;converted input 2
-	LDR r3, [r3]
-	LDR r8, =MUL_RESULT 	;result of our mul
-	LDR r8, [r8]
-MOV PC, lr
-	LDMIA SP!, { R3-R9, PC } ; loading into PC returns out of subroutine
-	;MOV pc, lr 				;return
 
 ;;exit program 
 _exit:
