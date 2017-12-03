@@ -23,10 +23,16 @@
 _main:
 	LDR r0, =ANGLE
 	
-	LDR	r0,=INPUT1_FLOAT
-	LDR	r1, =INPUT2_FLOAT
-    BL _MUL					;multiplication, store in MUL_RESULT
-    BL _CHECK_ANS			;move all results from memory to registers to easily check them
+	;LDR	r0,=INPUT1_FLOAT
+	;LDR r0, [r0]
+	;LDR	r1, =INPUT2_FLOAT
+	;LDR r1, [r1]
+    ;BL _MUL					;multiplication, store in MUL_RESULT
+    MOV r0, #0x46ffffff
+    MOV r1, #0x40000000
+    BL _MUL
+    ;BL Pow
+    ;BL _CHECK_ANS			;move all results from memory to registers to easily check them
     B _exit					;exit
 
 
@@ -36,19 +42,57 @@ Sin:
 Cos:
 	MOV PC, lr    			;return
 	
+; r0 = base
+; r1 = exponent
+; r2 = output
+;Currently only handles non-negative exponents since this is all we need.
+; Negative exponents will be treated as if there were 0
 Pow:
+	MOV r4, #0x0
+	CMP r1, r4
+	; Treat negative exponents as if they were 0
+	BLEQ ZERO_EXPONENT
+
+	MOV r2, r0
+
+POW_LOOP:
+	; Multiply r2 by itself as long as we have a postive exponent
+	; _MUL takes its input values in r0 and r1
+	MOV r0, r2
+
+	; Push r1 onto the stack to save our exponent
+	; Push does not seem to work, so I'll just use a temp register
+	MOV r6, r1
+	MOV r1, r2
+	BL _MUL					;multiplication, store in MUL_RESULT
+
+	; Output of _MUL will be in r3, but we want our output to be in r2
+	MOV r2, r3
+
+	; Restore our exponent
+	MOV r1, r6
+	; Keep multiplying until the exponent is 0
+	SUB r1, r1, #1
+	CMP r1, r4
+	BNE POW_LOOP
+	B FINISHED_POW
+
+ZERO_EXPONENT:
+	MOV r2, #1
+	
+FINISHED_POW:
 
 	MOV PC, lr    			;return
 	
 ;Multiplication subroutine
-;Modified this a bit to take address of inputs in r0 and r1 instead of hardcoding to INPUT_FLOAT1 and INPUT_FLOAT2
-;input: r0 = address of input 1, r1 = address of input 2
-;output: MUL_RESULT
+;Modified this a bit to take inputs in r0 and r1 instead of hardcoding to INPUT_FLOAT1 and INPUT_FLOAT2
+;input: r0 = input 1, r1 = input 2
+;output: r2
 _MUL:
 	;first get two inputs     
 	
-	LDR r0,[r0]
-	LDR	r1, [r1]
+	;LDR r0,[r0]
+	;LDR	r1, [r1]
 	
 	;;get exponents, check if either input is zero
 	;;ieee, zero is represented with zero in exponent field
@@ -159,6 +203,7 @@ MULT_ZERO:
 MULT_DONE:
 	LDR r4, =MUL_RESULT		
 	STR	r3, [r4]			;put answer into memory 
+    MOV r2, r3
     MOV PC, lr    			;return
 
 ;;move results to registers to check them
@@ -166,7 +211,7 @@ _CHECK_ANS:
 
 	LDR r2, =INPUT1_FLOAT 	;converted input 1
 	LDR r2, [r2]
-	LDR r3, =INPUT2_FLOAT 	;converrted input 2
+	LDR r3, =INPUT2_FLOAT 	;converted input 2
 	LDR r3, [r3]
 	LDR r8, =MUL_RESULT 	;result of our mul
 	LDR r8, [r8]
