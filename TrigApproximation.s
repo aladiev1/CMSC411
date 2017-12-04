@@ -42,7 +42,6 @@ _main:
 	LDR r0, =ANGLE
 	LDR r0, [r0]
     BL Sin
-
     ; Store result of sin in r8 and s8
     MOV r8, r1
     FMSR s8, r8
@@ -50,7 +49,6 @@ _main:
 	LDR r0, =ANGLE
 	LDR r0, [r0]
     BL Cos
-
     ; Store result of cos in r9 and s9
     MOV r9, r1
     FMSR s9, r9
@@ -58,10 +56,23 @@ _main:
 	LDR r0, =EXPONENTIAL_PARAMETER
 	LDR r0, [r0]
     BL Exponential
-
     ; Store result of the exponential function in r7 and s7
     MOV r7, r1
     FMSR s7, r7
+
+	LDR r0, =ANGLE
+	LDR r0, [r0]
+    BL Sinh
+    ; Store result of the sinh function in r6 and s6
+    MOV r6, r1
+    FMSR s6, r6
+
+	LDR r0, =ANGLE
+	LDR r0, [r0]
+    BL Cosh
+    ; Store result of the cosh function in r5 and s5
+    MOV r5, r1
+    FMSR s5, r5
 
 	; tan(x) = sin(x) / cos(x)
 	; Not checking for division by 0 here since FDVIS will just produce Infinity. Some value with all 1's in the exponent
@@ -202,6 +213,68 @@ FINISHED_SIN_APPROXIMATION:
 	FMRS r1, s2
 	LDMIA SP!, { R3-R9, PC }
 
+
+; Only differences between the sinh and sin functions is sinh does not alternate addition and subtraction
+Sinh:
+	; Preserve registers and make sure LR doesn't get corrupted when we make our calls to _MUL and pow
+	STMDB SP!, { R3-R9, LR }
+
+	; r3 = Angle to compute
+	; Storing in r3 since pow and _MUL require r0 and r1 for the input parameters
+	MOV r3, r0
+
+	; r4 = current exponent/Index in factorial table
+	MOV r4, #1
+	; r5 = Current offset in factorial table. Could just multiply the current index by 4, but I don't feel like doing another multiply
+	; Easier to just add 4 every loop iteration
+	MOV r5, #4
+
+	; r6 = Number of terms in factorial table. This will be our loop controller. Iterate as long as r4 is < r6
+	LDR r6, =NUM_TERMS_IN_FACTORIAL_TABLE
+	LDR r6, [r6]
+
+	; r8 = pointer to factorial table
+	LDR r8, =recipFactorialTable
+
+	; r7 = flag to determine whether we add or subtract. 0 corresponds to add. 1 corresponds to subtract
+	MOV r7, #0
+	; s2 = Accumulator. Will keep a running sum of our approximation. Set it to r7 since it's 0 anyway and we want to add first
+	FMSR s2, r7
+
+SINH_APPROXIMATION_LOOP:
+
+	; r9 = Current recriprocal factorial value
+	ldr r9,[r8, r5]
+
+	; r0 = Current angle. r1 = current exponent
+	MOV r0, r3
+	MOV r1, r4
+	BL Pow
+
+	; Move the result of the pow function into r0 to prepare for _MUL
+	MOV r0, r2
+	MOV r1, r9
+	BL _MUL
+
+	; Set up floating point registers to add
+	FMSR s0, r2
+
+	FADDS s2, s2, s0
+
+SINH_PREPARE_NEXT_TERM:
+
+	; Sinh skips the same as sin does
+	ADD r4, r4, #2
+	ADD r5, r5, #8
+	CMP r4, r6
+	BLT SINH_APPROXIMATION_LOOP
+
+FINISHED_SINH_APPROXIMATION:
+
+	FMRS r1, s2
+	LDMIA SP!, { R3-R9, PC }
+
+
 ; Input: r0 = angle in IEEE 754 format
 ; Output: r1
 Cos:
@@ -272,7 +345,66 @@ FINISHED_COS_APPROXIMATION:
 	FMRS r1, s2
 	LDMIA SP!, { R3-R9, PC }
 
-	;MOV PC, lr    			;return
+
+; Only differences between the cosh and cos functions is cosh does not alternate addition and subtraction
+Cosh:
+	; Preserve registers and make sure LR doesn't get corrupted when we make our calls to _MUL and pow
+	STMDB SP!, { R3-R9, LR }
+
+	; r3 = Angle to compute
+	; Storing in r3 since pow and _MUL require r0 and r1 for the input parameters
+	MOV r3, r0
+
+	; r4 = current exponent/Index in factorial table
+	MOV r4, #0
+	; r5 = Current offset in factorial table. Could just multiply the current index by 4, but I don't feel like doing another multiply
+	; Easier to just add 4 every loop iteration
+	MOV r5, #0
+
+	; r6 = Number of terms in factorial table. This will be our loop controller. Iterate as long as r4 is < r6
+	LDR r6, =NUM_TERMS_IN_FACTORIAL_TABLE
+	LDR r6, [r6]
+
+	; r8 = pointer to factorial table
+	LDR r8, =recipFactorialTable
+
+	; r7 = flag to determine whether we add or subtract. 0 corresponds to add. 1 corresponds to subtract
+	MOV r7, #0
+	; s2 = Accumulator. Will keep a running sum of our approximation. Set it to r7 since it's 0 anyway and we want to add first
+	FMSR s2, r7
+
+COSH_APPROXIMATION_LOOP:
+
+	; r9 = Current recriprocal factorial value
+	ldr r9,[r8, r5]
+
+	; r0 = Current angle. r1 = current exponent
+	MOV r0, r3
+	MOV r1, r4
+	BL Pow
+
+	; Move the result of the pow function into r0 to prepare for _MUL
+	MOV r0, r2
+	MOV r1, r9
+	BL _MUL
+
+	; Set up floating point registers to add
+	FMSR s0, r2
+
+	FADDS s2, s2, s0
+
+COSH_PREPARE_NEXT_TERM:
+
+	; Cosh skips the same as sin does
+	ADD r4, r4, #2
+	ADD r5, r5, #8
+	CMP r4, r6
+	BLT COSH_APPROXIMATION_LOOP
+
+FINISHED_COSH_APPROXIMATION:
+
+	FMRS r1, s2
+	LDMIA SP!, { R3-R9, PC }
 	
 ; r0 = base
 ; r1 = exponent
