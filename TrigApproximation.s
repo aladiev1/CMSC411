@@ -28,8 +28,11 @@
 	
 	NUM_TERMS_IN_FACTORIAL_TABLE: .word 0x28
 
-	ANGLE: .word 0x40B84E88
-	EXPONENTIAL_PARAMETER: .word 0x2
+	ANGLE: .word 0x3f860a92
+
+	; This value should be in IEEE 754 format
+	; 40C00000 = 6
+	EXPONENTIAL_PARAMETER: .word 0x40C00000
 
 .text
 .global _main
@@ -48,7 +51,7 @@ _main:
 	LDR r0, [r0]
     BL Cos
 
-    ; Store result of cos in r8 and s8
+    ; Store result of cos in r9 and s9
     MOV r9, r1
     FMSR s9, r9
 
@@ -112,20 +115,10 @@ EXPONENTIAL_APPROXIMATION_LOOP:
 	; Set up floating point registers to add
 	FMSR s0, r2
 
-	CMP r7, #0
-	BNE EXPONENTIAL_SUB_TERM
-
-EXPONENTIAL_ADD_TERM:
 	FADDS s2, s2, s0
-	B EXPONENTIAL_PREPARE_NEXT_TERM
-
-EXPONENTIAL_SUB_TERM:
-	FSUBS s2, s2, s0
 
 EXPONENTIAL_PREPARE_NEXT_TERM:
 
-	; Exponential function does not alternate between addition and subtraction, so keep operation on addition
-	;EOR r7, r7, #1
 	; Exponential does not skip any indices, so increment by 1 and 4
 	ADD r4, r4, #1
 	ADD r5, r5, #4
