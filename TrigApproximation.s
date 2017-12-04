@@ -28,7 +28,7 @@
 	
 	NUM_TERMS_IN_FACTORIAL_TABLE: .word 0x28
 
-	ANGLE: .word 0x3f860a92
+	ANGLE: .word 0x40490fdb
 
 	; This value should be in IEEE 754 format
 	; 40C00000 = 6
