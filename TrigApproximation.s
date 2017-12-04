@@ -78,6 +78,10 @@ _main:
 	; Not checking for division by 0 here since FDVIS will just produce Infinity. Some value with all 1's in the exponent
 	FDIVS s10, s8, s9
 
+	; tanh(x) = sinh(x) / cosh(x)
+	; Store in s4
+	FDIVS s4, s6, s5
+
     B _exit					;exit
 
 
