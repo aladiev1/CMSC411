@@ -1,3 +1,28 @@
-# CMSC411
+# CMSC411 Project
+	Jamal Savoy
+	Andrew Olean
+	Anna Aladiev
+	Kwame Robertson
+	Kevin Miller
 
-sin and cos approximation using taylor series. Used ARM multiplication code found here: https://github.com/bnat1/arm-calculator
+sin and cos approximation using taylor series using ARM multiplication code found here: https://github.com/bnat1/arm-calculator
+
+Also used taylor series to approximate sinh, cosh, and e^x
+
+FDIVS was used to calculate tan and tanh. Hopefully this is okay since the requirement was to just avoid the use of the built in MUL
+
+The 2 main constants are ANGLE and EXPONENTIAL_PARAMETER
+
+	ANGLE is the angle used for the input of the trig functions. EXPONENTIAL_PARAMETER is the input parameter for e^x. Both values should be in IEEE 754 format
+	
+After running TrigApproximation.s, the following registers will be set
+
+	r8 and s8: Sin(ANGLE)
+	r9 and s9: Cos(ANGLE)
+	r7 and s7: e^EXPONENTIAL_PARAMETER
+	r6 and s6: Sinh(ANGLE)
+	r5 and s5: Cosh(ANGLE)
+	s10		 : Tan(ANGLE)
+	s4		 : Tanh(ANGLE)
+	
+Report will be done by the time we present our project
